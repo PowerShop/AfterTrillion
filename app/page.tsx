@@ -1,23 +1,22 @@
 'use client';
 
-import { generateAllSuffixes, NumberData, getSuffix, getFullName } from '@/lib/suffixGenerator';
-import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { generateNumberData, NumberData, getSuffix, getFullName } from '@/lib/suffixGenerator';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 export default function Home() {
-  // Generate all suffixes
-  const allNumberData = useMemo(() => generateAllSuffixes(), []);
-  
   // Infinite scroll state
   const [displayedData, setDisplayedData] = useState<NumberData[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const ITEMS_PER_LOAD = 20;
+  const [currentExponent, setCurrentExponent] = useState(3);
+  const ITEMS_PER_LOAD = 30;
   
   // Power input state
   const [powerInput, setPowerInput] = useState('');
   const [highlightExponent, setHighlightExponent] = useState<number | null>(129);
   const highlightRef = useRef<HTMLTableRowElement>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
   
   const observerTarget = useRef<HTMLDivElement>(null);
+  const isLoadingRef = useRef(false);
 
   // Load initial data
   useEffect(() => {
@@ -26,20 +25,28 @@ export default function Home() {
 
   // Load more items
   const loadMoreItems = useCallback(() => {
-    const nextIndex = currentIndex + ITEMS_PER_LOAD;
-    const newItems = allNumberData.slice(currentIndex, nextIndex);
+    if (isLoadingRef.current) return;
+    
+    isLoadingRef.current = true;
+    
+    // Generate next batch of data
+    const newItems = generateNumberData(currentExponent, ITEMS_PER_LOAD);
     
     if (newItems.length > 0) {
       setDisplayedData(prev => [...prev, ...newItems]);
-      setCurrentIndex(nextIndex);
+      setCurrentExponent(currentExponent + (ITEMS_PER_LOAD * 3));
     }
-  }, [currentIndex, allNumberData]);
+    
+    setTimeout(() => {
+      isLoadingRef.current = false;
+    }, 100);
+  }, [currentExponent]);
 
   // Infinite scroll observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
-        if (entries[0].isIntersecting && currentIndex < allNumberData.length) {
+        if (entries[0].isIntersecting && !isLoadingRef.current) {
           loadMoreItems();
         }
       },
@@ -56,14 +63,7 @@ export default function Home() {
         observer.unobserve(currentTarget);
       }
     };
-  }, [loadMoreItems, currentIndex, allNumberData.length]);
-
-  // Scroll to highlighted item
-  useEffect(() => {
-    if (highlightRef.current) {
-      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [displayedData, highlightExponent]);
+  }, [loadMoreItems]);
 
   // Handle power input
   const handlePowerSearch = () => {
@@ -84,20 +84,24 @@ export default function Home() {
       alert('ค่าพลังต่ำเกินไป! กรุณากรอกค่าที่มากกว่า 1,000');
       return;
     }
-    
-    if (roundedExponent > 303) {
-      alert('ค่าพลังสูงเกินไป! สูงสุดที่ 10³⁰³');
-      return;
-    }
 
     setHighlightExponent(roundedExponent);
     
     // Load data up to the highlighted item if not loaded yet
-    const targetIndex = allNumberData.findIndex(d => d.exponent === roundedExponent);
-    if (targetIndex !== -1 && targetIndex >= displayedData.length) {
-      const itemsToLoad = allNumberData.slice(0, targetIndex + 10);
-      setDisplayedData(itemsToLoad);
-      setCurrentIndex(targetIndex + 10);
+    const targetIndex = displayedData.findIndex(d => d.exponent === roundedExponent);
+    if (targetIndex === -1 || roundedExponent >= currentExponent) {
+      // Calculate how many items needed
+      const itemsNeeded = Math.ceil((roundedExponent - 3) / 3) + 10;
+      const newData = generateNumberData(3, itemsNeeded);
+      setDisplayedData(newData);
+      setCurrentExponent(3 + (itemsNeeded * 3));
+    }
+  };
+
+  // Scroll to highlighted position
+  const scrollToHighlight = () => {
+    if (highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
@@ -110,7 +114,7 @@ export default function Home() {
             ตารางอ้างอิงตัวเลขเกม Idle
           </h1>
           <p className="text-gray-300 text-lg">
-            ตารางคำต่อท้ายตัวเลขครบถ้วนตั้งแต่ 10³ (พัน) ถึง 10³⁰³ (เซนทิลเลียน)
+            ตารางคำต่อท้ายตัวเลขครบถ้วนไม่สิ้นสุด - เลื่อนลงเพื่อโหลดเพิ่ม
           </p>
         </div>
 
@@ -152,7 +156,7 @@ export default function Home() {
           </div>
 
           {/* Scrollable Table */}
-          <div className="overflow-auto max-h-[70vh]">
+          <div ref={tableContainerRef} className="overflow-auto max-h-[70vh]">
             <table className="w-full">
               <thead className="bg-gray-900 sticky top-0 z-10">
                 <tr>
@@ -212,24 +216,33 @@ export default function Home() {
             </table>
             
             {/* Loading Indicator */}
-            {currentIndex < allNumberData.length && (
-              <div ref={observerTarget} className="flex justify-center py-8">
-                <div className="flex items-center space-x-2 text-purple-400">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-400"></div>
-                  <span className="text-sm">กำลังโหลดข้อมูล...</span>
-                </div>
+            <div ref={observerTarget} className="flex justify-center py-8">
+              <div className="flex items-center space-x-2 text-purple-400">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-400"></div>
+                <span className="text-sm">กำลังโหลดข้อมูล...</span>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Footer Info */}
           <div className="bg-gray-900 px-6 py-4 border-t border-gray-700">
             <div className="flex justify-between items-center text-sm text-gray-400">
-              <span>แสดง: {displayedData.length} / {allNumberData.length} รายการ</span>
-              <span>ช่วง: 10³ ถึง 10³⁰³</span>
+              <span>แสดง: {displayedData.length} รายการ</span>
+              <span>เลื่อนลงเพื่อโหลดเพิ่ม ∞</span>
             </div>
           </div>
         </div>
+
+        {/* Floating Button to Jump to Current Position */}
+        {highlightExponent && (
+          <button
+            onClick={scrollToHighlight}
+            className="fixed bottom-8 right-8 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-2xl hover:shadow-purple-500/50 hover:scale-105 flex items-center gap-2 z-50"
+          >
+            <span className="text-2xl">🎯</span>
+            <span>กลับสู่ตำแหน่งปัจจุบัน</span>
+          </button>
+        )}
 
         {/* Legend */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">

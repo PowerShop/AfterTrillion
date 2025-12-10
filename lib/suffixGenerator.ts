@@ -129,25 +129,70 @@ export function getFullName(exponent: number): string {
 }
 
 /**
- * Generate all number data from 10^3 to 10^303
+ * Generate suffix for infinite exponents using letter combinations
+ * After Centillion (10^303), use: aa, ab, ac, ... az, ba, bb, ... zz, aaa, aab, ...
  */
-export function generateAllSuffixes(): NumberData[] {
+function getInfiniteSuffix(exponent: number): string {
+  // Calculate position after 10^303
+  const position = (exponent - 306) / 3;
+  
+  // Convert number to letter combination (like Excel columns)
+  let suffix = '';
+  let num = position;
+  
+  while (num >= 0) {
+    suffix = String.fromCharCode(97 + (num % 26)) + suffix;
+    num = Math.floor(num / 26) - 1;
+  }
+  
+  return suffix;
+}
+
+/**
+ * Generate full name for infinite exponents
+ */
+function getInfiniteFullName(exponent: number): string {
+  const position = (exponent - 306) / 3;
+  return `Level ${position + 1} (10^${exponent})`;
+}
+
+/**
+ * Generate number data on demand (infinite generator)
+ */
+export function generateNumberData(startExp: number, count: number): NumberData[] {
   const data: NumberData[] = [];
   
-  // Generate for every exponent that's a multiple of 3 from 3 to 303
-  for (let exp = 3; exp <= 303; exp += 3) {
-    const suffix = getSuffix(exp);
-    const fullName = getFullName(exp);
+  for (let i = 0; i < count; i++) {
+    const exp = startExp + (i * 3);
+    let suffix: string;
+    let fullName: string;
     
-    if (suffix && fullName) {
-      data.push({
-        exponent: exp,
-        scientific: `1e${exp}`,
-        suffix,
-        fullName,
-      });
+    if (exp <= 303) {
+      // Use original system
+      suffix = getSuffix(exp);
+      fullName = getFullName(exp);
+      
+      if (!suffix || !fullName) continue;
+    } else {
+      // Use infinite system
+      suffix = getInfiniteSuffix(exp);
+      fullName = getInfiniteFullName(exp);
     }
+    
+    data.push({
+      exponent: exp,
+      scientific: `1e${exp}`,
+      suffix,
+      fullName,
+    });
   }
   
   return data;
+}
+
+/**
+ * Generate all number data from 10^3 to 10^303 (for backwards compatibility)
+ */
+export function generateAllSuffixes(): NumberData[] {
+  return generateNumberData(3, 101);
 }

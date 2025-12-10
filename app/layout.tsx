@@ -9,8 +9,8 @@ const notoSansThai = Noto_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: "ตารางอ้างอิงตัวเลขเกม Idle",
-  description: "ตารางอ้างอิงคำต่อท้ายตัวเลขในเกม Idle ตั้งแต่ 10³ ถึง 10³⁰³",
+  title: "After Trillion",
+  description: "ตารางอ้างอิงคำต่อท้ายตัวเลขในเกม Idle ไม่สิ้นสุด",
 };
 
 export default function RootLayout({
