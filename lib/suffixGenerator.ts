@@ -191,6 +191,102 @@ export function generateNumberData(startExp: number, count: number): NumberData[
 }
 
 /**
+ * Parse suffix and return the exponent
+ * Supports formats like: "dQDR", "1.5dQDR", "aa", "5.2ab", etc.
+ */
+export function parseFromSuffix(input: string): number | null {
+  // Remove whitespace
+  const trimmed = input.trim();
+  
+  // Extract suffix part (remove numbers and decimal points from the beginning)
+  const suffixMatch = trimmed.match(/([a-zA-Z]+)$/);
+  if (!suffixMatch) return null;
+  
+  const suffix = suffixMatch[1];
+  
+  // Check Tier 1: Standard suffixes
+  const tier1Map: { [key: string]: number } = {
+    'k': 3,
+    'M': 6,
+    'B': 9,
+    'T': 12,
+  };
+  
+  if (tier1Map[suffix]) {
+    return tier1Map[suffix];
+  }
+  
+  // Check Tier 2: Single letter suffixes
+  const tier2Map: { [key: string]: number } = {
+    'q': 15,
+    'Q': 18,
+    's': 21,
+    'S': 24,
+    'O': 27,
+    'N': 30,
+    'd': 33,
+  };
+  
+  if (tier2Map[suffix]) {
+    return tier2Map[suffix];
+  }
+  
+  // Check Tier 3: Compound Latin System
+  // Format: [Prefix][Root]
+  const rootMap: { [key: string]: number } = {
+    'Dc': 0,   // Decillion base (starting at 10^36)
+    'Vg': 1,   // Vigintillion (10^63)
+    'Tg': 2,   // Trigintillion (10^93)
+    'QDR': 3,  // Quadragintillion (10^123)
+    'Qn': 4,   // Quinquagintillion (10^153)
+    'Sx': 5,   // Sexagintillion (10^183)
+    'Sp': 6,   // Septuagintillion (10^213)
+    'Oc': 7,   // Octogintillion (10^243)
+    'No': 8,   // Nonagintillion (10^273)
+  };
+  
+  const prefixMap: { [key: string]: number } = {
+    'U': 1, 'd': 2, 't': 3, 'q': 4, 'Q': 5, 's': 6, 'S': 7, 'o': 8, 'n': 9
+  };
+  
+  // Try to match compound Latin suffixes
+  for (const [root, tensValue] of Object.entries(rootMap)) {
+    if (suffix.endsWith(root)) {
+      const prefix = suffix.substring(0, suffix.length - root.length);
+      
+      if (prefix === '') {
+        // No prefix, e.g., "Dc" = 10^36
+        const exponent = 36 + (tensValue * 30);
+        return exponent;
+      }
+      
+      // Has prefix
+      const unitsValue = prefixMap[prefix];
+      if (unitsValue !== undefined) {
+        const position = (tensValue * 10) + unitsValue;
+        const exponent = 36 + (position * 3);
+        return exponent;
+      }
+    }
+  }
+  
+  // Check if it's an infinite suffix (aa, ab, ac, etc.)
+  if (/^[a-z]+$/.test(suffix)) {
+    // Convert letter combination to position
+    let position = 0;
+    for (let i = 0; i < suffix.length; i++) {
+      position = position * 26 + (suffix.charCodeAt(i) - 97 + 1);
+    }
+    position -= 1; // Zero-indexed
+    
+    const exponent = 306 + (position * 3);
+    return exponent;
+  }
+  
+  return null;
+}
+
+/**
  * Generate all number data from 10^3 to 10^303 (for backwards compatibility)
  */
 export function generateAllSuffixes(): NumberData[] {

@@ -1,6 +1,6 @@
 'use client';
 
-import { generateNumberData, NumberData, getSuffix, getFullName } from '@/lib/suffixGenerator';
+import { generateNumberData, NumberData, getSuffix, getFullName, parseFromSuffix } from '@/lib/suffixGenerator';
 import { useState, useRef, useCallback, useEffect } from 'react';
 
 export default function Home() {
@@ -67,22 +67,45 @@ export default function Home() {
 
   // Handle power input
   const handlePowerSearch = () => {
-    const power = parseFloat(powerInput);
+    const input = powerInput.trim();
     
-    if (isNaN(power) || power < 0) {
-      alert('กรุณากรอกตัวเลขที่ถูกต้อง');
+    if (!input) {
+      alert('กรุณากรอกข้อมูล');
       return;
     }
 
-    // Calculate the exponent from the power value
-    const exponent = Math.floor(Math.log10(power));
-    
-    // Round to nearest multiple of 3
-    const roundedExponent = Math.floor(exponent / 3) * 3;
-    
-    if (roundedExponent < 3) {
-      alert('ค่าพลังต่ำเกินไป! กรุณากรอกค่าที่มากกว่า 1,000');
-      return;
+    let roundedExponent: number;
+
+    // Check if input contains letters (suffix format)
+    if (/[a-zA-Z]/.test(input)) {
+      // Parse from suffix
+      const exponent = parseFromSuffix(input);
+      
+      if (exponent === null) {
+        alert('ไม่พบ suffix ที่ตรงกัน! ลองใช้ k, M, B, T, dQDR, aa, ab เป็นต้น');
+        return;
+      }
+      
+      roundedExponent = exponent;
+    } else {
+      // Parse as number
+      const power = parseFloat(input);
+      
+      if (isNaN(power) || power < 0) {
+        alert('กรุณากรอกตัวเลขที่ถูกต้อง');
+        return;
+      }
+
+      // Calculate the exponent from the power value
+      const exponent = Math.floor(Math.log10(power));
+      
+      // Round to nearest multiple of 3
+      roundedExponent = Math.floor(exponent / 3) * 3;
+      
+      if (roundedExponent < 3) {
+        alert('ค่าพลังต่ำเกินไป! กรุณากรอกค่าที่มากกว่า 1,000');
+        return;
+      }
     }
 
     setHighlightExponent(roundedExponent);
@@ -121,14 +144,14 @@ export default function Home() {
         {/* Power Input Section */}
         <div className="mb-8 max-w-2xl mx-auto">
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-700 p-6">
-            <h2 className="text-xl font-bold mb-4 text-purple-300">🔍 ค้นหาตำแหน่งจากค่าพลัง</h2>
+            <h2 className="text-xl font-bold mb-4 text-purple-300">🔍 ค้นหาตำแหน่งจากค่าพลังหรือ Suffix</h2>
             <div className="flex gap-3">
               <input
                 type="text"
                 value={powerInput}
                 onChange={(e) => setPowerInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handlePowerSearch()}
-                placeholder="กรอกค่าพลังของคุณ (เช่น 1.5e129)"
+                placeholder="กรอกค่าพลัง (1.5e129) หรือ suffix (dQDR, aa, ab)"
                 className="flex-1 px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
               <button
@@ -137,6 +160,9 @@ export default function Home() {
               >
                 ค้นหา
               </button>
+            </div>
+            <div className="mt-3 text-xs text-gray-400">
+              💡 ตัวอย่าง: <span className="text-purple-300">dQDR</span>, <span className="text-purple-300">1.5dQDR</span>, <span className="text-purple-300">aa</span>, <span className="text-purple-300">5.2ab</span>, <span className="text-purple-300">1e129</span>
             </div>
             {highlightExponent && (
               <div className="mt-4 p-4 bg-purple-900/30 border border-purple-500/50 rounded-lg">
