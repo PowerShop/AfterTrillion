@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
+import { Noto_Sans_Thai } from 'next/font/google';
 import "./globals.css";
 
+const notoSansThai = Noto_Sans_Thai({
+  subsets: ['thai', 'latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
-  title: "Idle Game Number Reference",
-  description: "Complete reference table for idle game number suffixes from 10^3 to 10^303",
+  title: "ตารางอ้างอิงตัวเลขเกม Idle",
+  description: "ตารางอ้างอิงคำต่อท้ายตัวเลขในเกม Idle ตั้งแต่ 10³ ถึง 10³⁰³",
 };
 
 export default function RootLayout({
@@ -12,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="th">
+      <body className={notoSansThai.className}>{children}</body>
     </html>
   );
 }
